@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Appointment, ChatMessage } from '@/types';
 import { getUser, saveUser, getAppointments, saveAppointment, getChatHistory, saveChatHistory } from '@/services/dbService';
@@ -19,6 +18,7 @@ interface HealthCareContextType {
   isListening: boolean;
   startListening: () => void;
   stopListening: () => void;
+  sendVoiceNote: (audioBlob: Blob) => void;
 }
 
 const HealthCareContext = createContext<HealthCareContextType | undefined>(undefined);
@@ -157,6 +157,21 @@ export function HealthCareProvider({ children }: { children: ReactNode }) {
     setIsListening(false);
   };
 
+  // Voice note handling
+  const sendVoiceNote = (audioBlob: Blob) => {
+    // Create a message with voice note indicator
+    addMessage("🎤 Voice Note Sent", 'You');
+    
+    // In a real app, you would process this audio or send it to a speech-to-text service
+    // For now, we'll simulate a response after a short delay
+    setTimeout(() => {
+      addMessage("I've received your voice note. While I can't listen to audio right now, you can describe your health concerns in text and I'll be happy to help.", 'HealthCare Bot');
+    }, 1000);
+
+    // Optionally save the audio blob to storage if needed
+    // In a real app, you would upload this to a server or cloud storage
+  };
+
   return (
     <HealthCareContext.Provider value={{
       user,
@@ -171,7 +186,8 @@ export function HealthCareProvider({ children }: { children: ReactNode }) {
       sendMessage,
       isListening,
       startListening,
-      stopListening
+      stopListening,
+      sendVoiceNote
     }}>
       {children}
     </HealthCareContext.Provider>

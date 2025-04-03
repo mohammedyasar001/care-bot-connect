@@ -1,6 +1,6 @@
 
-import { cn } from "@/lib/utils";
-import { ChatMessage } from "@/types";
+import { ChatMessage } from '@/types';
+import { Mic } from 'lucide-react';
 
 interface ChatBubbleProps {
   message: ChatMessage;
@@ -8,48 +8,31 @@ interface ChatBubbleProps {
 
 export function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.sender === 'You';
-  
-  // Check if message contains prescription
-  const hasPrescription = message.message.includes("Prescription:");
-  
-  let mainText = message.message;
-  let prescriptionText = "";
-  
-  if (hasPrescription) {
-    const parts = message.message.split("Prescription:");
-    mainText = parts[0].trim();
-    prescriptionText = "Prescription: " + parts[1].trim();
-  }
+  const isVoiceNote = message.message.startsWith('🎤');
   
   return (
-    <div 
-      className={cn(
-        "mb-4 max-w-[80%] animate-fade-in",
-        isUser ? "ml-auto" : "mr-auto"
-      )}
-    >
-      <div 
-        className={cn(
-          "rounded-lg p-3 shadow",
-          isUser 
-            ? "bg-healthcare-userBubble border border-green-200 rounded-tr-none" 
-            : "bg-healthcare-botBubble border border-gray-200 rounded-tl-none"
-        )}
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`${
+          isUser
+            ? 'bg-healthcare-primary text-white rounded-tl-xl rounded-tr-sm rounded-bl-xl rounded-br-xl'
+            : 'bg-white border border-gray-200 rounded-tl-sm rounded-tr-xl rounded-bl-xl rounded-br-xl'
+        } p-4 max-w-[80%] shadow-sm`}
       >
-        <div className="flex items-center gap-2 mb-1">
-          {isUser ? (
-            <span className="font-bold text-sm">👤 You</span>
-          ) : (
-            <span className="font-bold text-sm">🤖 HealthCare Bot</span>
-          )}
-        </div>
-        
-        <div className="text-gray-800">
-          <p className="font-semibold">{mainText}</p>
-          
-          {hasPrescription && (
-            <p className="mt-2 text-sm font-medium">{prescriptionText}</p>
-          )}
+        {isVoiceNote ? (
+          <div className="flex items-center gap-2">
+            <Mic size={16} />
+            <span>{message.message}</span>
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap">{message.message}</p>
+        )}
+        <div
+          className={`text-xs mt-2 ${
+            isUser ? 'text-blue-100' : 'text-gray-500'
+          }`}
+        >
+          {new Date(message.timestamp).toLocaleTimeString()}
         </div>
       </div>
     </div>
