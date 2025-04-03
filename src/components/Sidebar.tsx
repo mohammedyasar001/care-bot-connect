@@ -11,21 +11,30 @@ import { Calendar, AlertTriangle, Globe, Lightbulb, Clock, XCircle, User } from 
 interface SidebarButtonProps {
   icon: React.ReactNode;
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
+  className?: string;
 }
 
-function SidebarButton({ icon, label, onClick }: SidebarButtonProps) {
-  return (
-    <Button 
-      variant="ghost"
-      className="w-full justify-start gap-2 text-healthcare-sidebar-foreground hover:bg-healthcare-primary hover:text-white"
-      onClick={onClick}
-    >
-      {icon}
-      <span>{label}</span>
-    </Button>
-  );
-}
+// Change the SidebarButton to not be used with asChild from Radix UI
+const SidebarButton = React.forwardRef<HTMLButtonElement, SidebarButtonProps>(
+  ({ icon, label, onClick, className }, ref) => {
+    return (
+      <Button 
+        ref={ref}
+        variant="ghost"
+        className={cn(
+          "w-full justify-start gap-2 text-healthcare-sidebar-foreground hover:bg-healthcare-primary hover:text-white",
+          className
+        )}
+        onClick={onClick}
+      >
+        {icon}
+        <span>{label}</span>
+      </Button>
+    );
+  }
+);
+SidebarButton.displayName = "SidebarButton";
 
 export function HealthCareSidebar() {
   const { 
@@ -147,11 +156,13 @@ export function HealthCareSidebar() {
             />
             
             <AppointmentDialog>
-              <SidebarButton 
-                icon={<Calendar size={18} />} 
-                label="Schedule" 
-                onClick={() => {}} 
-              />
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-healthcare-sidebar-foreground hover:bg-healthcare-primary hover:text-white"
+              >
+                <Calendar size={18} />
+                <span>Schedule</span>
+              </Button>
             </AppointmentDialog>
             
             <SidebarButton 
