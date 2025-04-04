@@ -1,5 +1,4 @@
 
-
 // Define the SpeechRecognition interface
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
@@ -47,7 +46,8 @@ declare global {
 
 // Speech recognition polyfill
 if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-  window.webkitSpeechRecognition = class MockSpeechRecognition implements SpeechRecognition {
+  // Create a mock implementation for environments that don't support speech recognition
+  class MockSpeechRecognition implements SpeechRecognition {
     continuous = false;
     interimResults = false;
     lang = 'en-US';
@@ -61,27 +61,35 @@ if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) 
     dispatchEvent() { return true; }
     
     start() { 
+      const startEvent = new Event('start');
       if (this.onstart) {
-        this.onstart(new Event('start')); 
+        this.onstart(startEvent); 
       }
+      
+      // Simulate ending after a delay
       setTimeout(() => { 
+        const endEvent = new Event('end');
         if (this.onend) {
-          this.onend(new Event('end')); 
+          this.onend(endEvent); 
         }
       }, 1000); 
     }
     
     stop() { 
+      const endEvent = new Event('end');
       if (this.onend) {
-        this.onend(new Event('end')); 
+        this.onend(endEvent); 
       }
     }
     
     abort() { 
+      const endEvent = new Event('end');
       if (this.onend) {
-        this.onend(new Event('end')); 
+        this.onend(endEvent); 
       }
     }
-  } as any;
+  }
+  
+  // Assign the mock class to the window object
+  window.webkitSpeechRecognition = MockSpeechRecognition as any;
 }
-
