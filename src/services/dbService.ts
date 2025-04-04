@@ -1,171 +1,167 @@
-import { User, Appointment, Feedback, ChatMessage } from '@/types';
 
-// Update API_URL to be relative or environment-aware
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { User, Appointment, Feedback, ChatMessage } from '@/types';
+import { getBotResponse } from '@/utils/healthData';
+
+// In-memory storage
+const storage = {
+  user: null as User | null,
+  appointments: [] as Appointment[],
+  feedback: [] as Feedback[],
+  chatHistory: [] as ChatMessage[],
+};
 
 // User methods
 export const getUser = async (): Promise<User | null> => {
+  // Try to load from localStorage first
   try {
-    const response = await fetch(`${API_URL}/user`);
-    const data = await response.json();
-    return Object.keys(data).length === 0 ? null : data;
+    const savedUser = localStorage.getItem('healthcare_user');
+    if (savedUser) {
+      storage.user = JSON.parse(savedUser);
+    }
   } catch (error) {
-    console.error('Error fetching user:', error);
-    return null;
+    console.error('Error loading user from localStorage:', error);
   }
+  
+  return storage.user;
 };
 
 export const saveUser = async (user: User): Promise<void> => {
+  storage.user = user;
   try {
-    await fetch(`${API_URL}/user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(user),
-    });
+    localStorage.setItem('healthcare_user', JSON.stringify(user));
   } catch (error) {
-    console.error('Error saving user:', error);
+    console.error('Error saving user to localStorage:', error);
   }
 };
 
 // Appointment methods
 export const getAppointments = async (): Promise<Appointment[]> => {
+  // Try to load from localStorage first
   try {
-    const response = await fetch(`${API_URL}/appointments`);
-    const data = await response.json();
-    return data;
+    const savedAppointments = localStorage.getItem('healthcare_appointments');
+    if (savedAppointments) {
+      storage.appointments = JSON.parse(savedAppointments);
+    }
   } catch (error) {
-    console.error('Error fetching appointments:', error);
-    return [];
+    console.error('Error loading appointments from localStorage:', error);
   }
+  
+  return storage.appointments;
 };
 
 export const saveAppointment = async (appointment: Appointment): Promise<Appointment> => {
+  const newAppointment = {
+    ...appointment,
+    id: Date.now()
+  };
+  
+  storage.appointments.push(newAppointment);
+  
   try {
-    const response = await fetch(`${API_URL}/appointments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(appointment),
-    });
-    return await response.json();
+    localStorage.setItem('healthcare_appointments', JSON.stringify(storage.appointments));
   } catch (error) {
-    console.error('Error saving appointment:', error);
-    throw new Error('Failed to save appointment');
+    console.error('Error saving appointments to localStorage:', error);
   }
+  
+  return newAppointment;
 };
 
 export const deleteAppointment = async (id: number): Promise<void> => {
+  storage.appointments = storage.appointments.filter(app => app.id !== id);
+  
   try {
-    await fetch(`${API_URL}/appointments/${id}`, {
-      method: 'DELETE',
-    });
+    localStorage.setItem('healthcare_appointments', JSON.stringify(storage.appointments));
   } catch (error) {
-    console.error('Error deleting appointment:', error);
+    console.error('Error saving appointments to localStorage:', error);
   }
 };
 
 // Feedback methods
 export const saveFeedback = async (feedback: Feedback): Promise<void> => {
+  const newFeedback = {
+    ...feedback,
+    id: Date.now()
+  };
+  
+  storage.feedback.push(newFeedback);
+  
   try {
-    await fetch(`${API_URL}/feedback`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(feedback),
-    });
+    localStorage.setItem('healthcare_feedback', JSON.stringify(storage.feedback));
   } catch (error) {
-    console.error('Error saving feedback:', error);
+    console.error('Error saving feedback to localStorage:', error);
   }
 };
 
 export const getFeedback = async (): Promise<Feedback[]> => {
+  // Try to load from localStorage first
   try {
-    const response = await fetch(`${API_URL}/feedback`);
-    const data = await response.json();
-    return data;
+    const savedFeedback = localStorage.getItem('healthcare_feedback');
+    if (savedFeedback) {
+      storage.feedback = JSON.parse(savedFeedback);
+    }
   } catch (error) {
-    console.error('Error fetching feedback:', error);
-    return [];
+    console.error('Error loading feedback from localStorage:', error);
   }
+  
+  return storage.feedback;
 };
 
 // Chat history methods
-export const saveChatHistory = async (chatHistory: ChatMessage[]): Promise<void> => {
-  // This function is no longer needed as we're saving messages one by one
-  // But we'll keep it for compatibility
-  try {
-    const lastMessage = chatHistory[chatHistory.length - 1];
-    await fetch(`${API_URL}/chat-history`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: lastMessage.message,
-        sender: lastMessage.sender
-      }),
-    });
-  } catch (error) {
-    console.error('Error saving chat history:', error);
-  }
-};
-
 export const getChatHistory = async (): Promise<ChatMessage[]> => {
+  // Try to load from localStorage first
   try {
-    const response = await fetch(`${API_URL}/chat-history`);
-    const data = await response.json();
-    // Convert ISO string timestamps to Date objects
-    return data.map((msg: any) => ({
-      ...msg,
-      timestamp: new Date(msg.timestamp)
-    }));
+    const savedChat = localStorage.getItem('healthcare_chat');
+    if (savedChat) {
+      storage.chatHistory = JSON.parse(savedChat).map((msg: any) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp)
+      }));
+    }
   } catch (error) {
-    console.error('Error fetching chat history:', error);
-    return [];
+    console.error('Error loading chat history from localStorage:', error);
   }
+  
+  return storage.chatHistory;
 };
 
 export const clearChatHistory = async (): Promise<void> => {
+  storage.chatHistory = [];
   try {
-    await fetch(`${API_URL}/chat-history`, {
-      method: 'DELETE',
-    });
+    localStorage.setItem('healthcare_chat', JSON.stringify(storage.chatHistory));
   } catch (error) {
-    console.error('Error clearing chat history:', error);
+    console.error('Error clearing chat history in localStorage:', error);
   }
 };
 
-// New function to send a message and get bot response
+// Process user message and get bot response
 export const sendMessageToBot = async (message: string): Promise<ChatMessage[]> => {
+  const userMessage: ChatMessage = {
+    id: Date.now().toString(),
+    message,
+    sender: 'You',
+    timestamp: new Date()
+  };
+  
+  storage.chatHistory.push(userMessage);
+  
+  // Get response from our health data utility
+  const botResponse = getBotResponse(message);
+  
+  const botMessage: ChatMessage = {
+    id: (Date.now() + 1).toString(),
+    message: botResponse,
+    sender: 'HealthCare Bot',
+    timestamp: new Date()
+  };
+  
+  storage.chatHistory.push(botMessage);
+  
   try {
-    const response = await fetch(`${API_URL}/chat-history`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        sender: 'You'
-      }),
-    });
-    
-    const data = await response.json();
-    // Convert ISO string timestamps to Date objects
-    return Array.isArray(data) 
-      ? data.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }))
-      : [{
-          ...data,
-          timestamp: new Date(data.timestamp)
-        }];
+    localStorage.setItem('healthcare_chat', JSON.stringify(storage.chatHistory));
   } catch (error) {
-    console.error('Error sending message to bot:', error);
-    throw new Error('Failed to send message');
+    console.error('Error saving chat history to localStorage:', error);
   }
+  
+  // Return last two messages (user + bot)
+  return [userMessage, botMessage];
 };
