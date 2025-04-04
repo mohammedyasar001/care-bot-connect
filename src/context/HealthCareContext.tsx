@@ -1,8 +1,15 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Appointment, ChatMessage } from '@/types';
-import { getUser, saveUser, getAppointments, saveAppointment, getChatHistory, saveChatHistory } from '@/services/dbService';
-import { getBotResponse } from '@/utils/healthData';
+import { 
+  getUser, 
+  saveUser, 
+  getAppointments, 
+  saveAppointment, 
+  getChatHistory, 
+  clearChatHistory,
+  sendMessageToBot 
+} from '@/services/dbService';
 import { useToast } from '@/components/ui/use-toast';
 
 interface HealthCareContextType {
@@ -12,13 +19,11 @@ interface HealthCareContextType {
   addMessage: (message: string, sender: 'You' | 'HealthCare Bot') => void;
   clearChat: () => void;
   appointments: Appointment[];
-  addAppointment: (appointment: Appointment) => Appointment;
+  addAppointment: (appointment: Appointment) => Promise<Appointment>;
   profileMenuOpen: boolean;
   toggleProfileMenu: () => void;
   sendMessage: (message: string) => void;
-  isListening: boolean;
-  startListening: () => void;
-  stopListening: () => void;
+  isLoading: boolean;
 }
 
 const HealthCareContext = createContext<HealthCareContextType | undefined>(undefined);
@@ -28,82 +33,126 @@ export function HealthCareProvider({ children }: { children: ReactNode }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Load data from localStorage on component mount
+  // Load data from API on component mount
   useEffect(() => {
-    const savedUser = getUser();
-    if (savedUser) {
-      setUserState(savedUser);
-    }
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch user data
+        const savedUser = await getUser();
+        if (savedUser) {
+          setUserState(savedUser);
+        }
 
-    const savedAppointments = getAppointments();
-    setAppointments(savedAppointments);
+        // Fetch appointments
+        const savedAppointments = await getAppointments();
+        setAppointments(savedAppointments);
 
-    const savedChat = getChatHistory();
-    if (savedChat && savedChat.length > 0) {
-      setChatMessages(savedChat);
-    } else {
-      // Add welcome message if no chat history
-      const welcomeMessage: ChatMessage = {
-        id: Date.now().toString(),
-        sender: 'HealthCare Bot',
-        message: 'Welcome to HealthCare Bot! How can I assist you today?',
-        timestamp: new Date()
-      };
-      setChatMessages([welcomeMessage]);
-    }
-  }, []);
+        // Fetch chat history
+        const savedChat = await getChatHistory();
+        if (savedChat && savedChat.length > 0) {
+          setChatMessages(savedChat);
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+        toast({
+          title: "Connection Error",
+          description: "Could not connect to the Python backend server. Make sure it's running.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Save chat history when it changes
-  useEffect(() => {
-    if (chatMessages.length > 0) {
-      saveChatHistory(chatMessages);
-    }
-  }, [chatMessages]);
+    fetchData();
+  }, [toast]);
 
   // Save user when it changes
-  const setUser = (userData: User) => {
-    setUserState(userData);
-    saveUser(userData);
-    toast({
-      title: "Profile Updated",
-      description: `Welcome, ${userData.name}!`,
-    });
+  const setUser = async (userData: User) => {
+    try {
+      setIsLoading(true);
+      await saveUser(userData);
+      setUserState(userData);
+      toast({
+        title: "Profile Updated",
+        description: `Welcome, ${userData.name}!`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Add a message to the chat
-  const addMessage = (message: string, sender: 'You' | 'HealthCare Bot') => {
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      sender,
-      message,
-      timestamp: new Date()
-    };
-    setChatMessages(prev => [...prev, newMessage]);
+  const addMessage = async (message: string, sender: 'You' | 'HealthCare Bot') => {
+    try {
+      const newMessage: ChatMessage = {
+        id: Date.now().toString(),
+        sender,
+        message,
+        timestamp: new Date()
+      };
+      
+      setChatMessages(prev => [...prev, newMessage]);
+      
+      // We're not calling the API here as we use sendMessageToBot for user messages
+      // and bot responses are automatically generated by the backend
+    } catch (error) {
+      console.error('Error adding message:', error);
+    }
   };
 
   // Clear the chat history
-  const clearChat = () => {
-    const welcomeMessage: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'HealthCare Bot',
-      message: 'Chat history cleared. How can I help you today?',
-      timestamp: new Date()
-    };
-    setChatMessages([welcomeMessage]);
+  const clearChat = async () => {
+    try {
+      setIsLoading(true);
+      await clearChatHistory();
+      const newChatHistory = await getChatHistory();
+      setChatMessages(newChatHistory);
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear chat history",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Add a new appointment
-  const addAppointment = (appointment: Appointment) => {
-    const newAppointment = saveAppointment(appointment);
-    setAppointments(prev => [...prev, newAppointment]);
-    toast({
-      title: "Appointment Scheduled",
-      description: `${appointment.date} at ${appointment.time}`,
-    });
-    return newAppointment;
+  const addAppointment = async (appointment: Appointment) => {
+    try {
+      setIsLoading(true);
+      const newAppointment = await saveAppointment(appointment);
+      setAppointments(prev => [...prev, newAppointment]);
+      toast({
+        title: "Appointment Scheduled",
+        description: `${appointment.date} at ${appointment.time}`,
+      });
+      return newAppointment;
+    } catch (error) {
+      console.error('Error adding appointment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to schedule appointment",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Toggle profile menu
@@ -112,49 +161,50 @@ export function HealthCareProvider({ children }: { children: ReactNode }) {
   };
 
   // Send message and get bot response
-  const sendMessage = (message: string) => {
+  const sendMessage = async (message: string) => {
     if (!message.trim()) return;
     
-    // Add user message to chat
-    addMessage(message, 'You');
-    
-    // Get bot response
-    setTimeout(() => {
-      const botResponse = getBotResponse(message);
-      addMessage(botResponse, 'HealthCare Bot');
-    }, 500);
-  };
-
-  // Voice recognition handlers
-  const startListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    try {
+      setIsLoading(true);
+      
+      // Add user message to chat immediately for better UX
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        sender: 'You',
+        message: message,
+        timestamp: new Date()
+      };
+      
+      setChatMessages(prev => [...prev, userMessage]);
+      
+      // Send to backend and get response
+      const messages = await sendMessageToBot(message);
+      
+      // Only add the bot response if it exists (the user message is already added)
+      if (messages.length > 1) {
+        const botMessage = messages[1];
+        setChatMessages(prev => [...prev, botMessage]);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
       toast({
-        title: "Not Supported",
-        description: "Speech recognition is not supported in your browser.",
+        title: "Error",
+        description: "Failed to send message",
         variant: "destructive"
       });
-      return;
+      
+      // Add a fallback bot response if the backend fails
+      const fallbackMessage: ChatMessage = {
+        id: Date.now().toString() + "-fallback",
+        sender: "HealthCare Bot",
+        message: "I'm sorry, I'm having trouble connecting to the server right now. Please try again later.",
+        timestamp: new Date()
+      };
+      
+      setChatMessages(prev => [...prev, fallbackMessage]);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsListening(true);
-    toast({
-      title: "Listening...",
-      description: "Speak now and I'll try to understand",
-    });
-    
-    // This is just a mock for the web app
-    // In a real app, you would implement actual speech recognition
-    setTimeout(() => {
-      setIsListening(false);
-      toast({
-        title: "Stopped listening",
-        description: "Voice input not implemented in this demo",
-      });
-    }, 3000);
-  };
-
-  const stopListening = () => {
-    setIsListening(false);
   };
 
   return (
@@ -169,9 +219,7 @@ export function HealthCareProvider({ children }: { children: ReactNode }) {
       profileMenuOpen,
       toggleProfileMenu,
       sendMessage,
-      isListening,
-      startListening,
-      stopListening
+      isLoading
     }}>
       {children}
     </HealthCareContext.Provider>

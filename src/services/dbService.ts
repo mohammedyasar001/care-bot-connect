@@ -1,78 +1,170 @@
+import { User, Appointment, Feedback, ChatMessage } from '@/types';
 
-import { User, Appointment, Feedback } from '@/types';
-
-// LocalStorage keys
-const STORAGE_KEYS = {
-  USERS: 'healthcare-bot-users',
-  APPOINTMENTS: 'healthcare-bot-appointments',
-  FEEDBACK: 'healthcare-bot-feedback',
-  CHAT_HISTORY: 'healthcare-bot-chat-history'
-};
+const API_URL = 'http://localhost:5000/api';
 
 // User methods
-export const getUser = (): User | null => {
-  const data = localStorage.getItem(STORAGE_KEYS.USERS);
-  return data ? JSON.parse(data) : null;
+export const getUser = async (): Promise<User | null> => {
+  try {
+    const response = await fetch(`${API_URL}/user`);
+    const data = await response.json();
+    return Object.keys(data).length === 0 ? null : data;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return null;
+  }
 };
 
-export const saveUser = (user: User): void => {
-  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(user));
+export const saveUser = async (user: User): Promise<void> => {
+  try {
+    await fetch(`${API_URL}/user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(user),
+    });
+  } catch (error) {
+    console.error('Error saving user:', error);
+  }
 };
 
 // Appointment methods
-export const getAppointments = (): Appointment[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
-  return data ? JSON.parse(data) : [];
+export const getAppointments = async (): Promise<Appointment[]> => {
+  try {
+    const response = await fetch(`${API_URL}/appointments`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    return [];
+  }
 };
 
-export const saveAppointment = (appointment: Appointment): Appointment => {
-  const appointments = getAppointments();
-  const newAppointment = {
-    ...appointment,
-    id: Date.now(), // Simple ID generation
-    reminded: false
-  };
-  
-  appointments.push(newAppointment);
-  localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(appointments));
-  return newAppointment;
+export const saveAppointment = async (appointment: Appointment): Promise<Appointment> => {
+  try {
+    const response = await fetch(`${API_URL}/appointments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(appointment),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving appointment:', error);
+    throw new Error('Failed to save appointment');
+  }
 };
 
-export const deleteAppointment = (id: number): void => {
-  const appointments = getAppointments();
-  const updatedAppointments = appointments.filter(app => app.id !== id);
-  localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(updatedAppointments));
+export const deleteAppointment = async (id: number): Promise<void> => {
+  try {
+    await fetch(`${API_URL}/appointments/${id}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Error deleting appointment:', error);
+  }
 };
 
 // Feedback methods
-export const saveFeedback = (feedback: Feedback): void => {
-  const feedbackList = getFeedback();
-  const newFeedback = {
-    ...feedback,
-    id: Date.now()
-  };
-  
-  feedbackList.push(newFeedback);
-  localStorage.setItem(STORAGE_KEYS.FEEDBACK, JSON.stringify(feedbackList));
+export const saveFeedback = async (feedback: Feedback): Promise<void> => {
+  try {
+    await fetch(`${API_URL}/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(feedback),
+    });
+  } catch (error) {
+    console.error('Error saving feedback:', error);
+  }
 };
 
-export const getFeedback = (): Feedback[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.FEEDBACK);
-  return data ? JSON.parse(data) : [];
+export const getFeedback = async (): Promise<Feedback[]> => {
+  try {
+    const response = await fetch(`${API_URL}/feedback`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching feedback:', error);
+    return [];
+  }
 };
 
 // Chat history methods
-export const saveChatHistory = (chatHistory: any[]): void => {
-  // Limit to the last 50 messages to avoid storage issues
-  const limitedHistory = chatHistory.slice(-50);
-  localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(limitedHistory));
+export const saveChatHistory = async (chatHistory: ChatMessage[]): Promise<void> => {
+  // This function is no longer needed as we're saving messages one by one
+  // But we'll keep it for compatibility
+  try {
+    const lastMessage = chatHistory[chatHistory.length - 1];
+    await fetch(`${API_URL}/chat-history`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: lastMessage.message,
+        sender: lastMessage.sender
+      }),
+    });
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+  }
 };
 
-export const getChatHistory = (): any[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
-  return data ? JSON.parse(data) : [];
+export const getChatHistory = async (): Promise<ChatMessage[]> => {
+  try {
+    const response = await fetch(`${API_URL}/chat-history`);
+    const data = await response.json();
+    // Convert ISO string timestamps to Date objects
+    return data.map((msg: any) => ({
+      ...msg,
+      timestamp: new Date(msg.timestamp)
+    }));
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    return [];
+  }
 };
 
-export const clearChatHistory = (): void => {
-  localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+export const clearChatHistory = async (): Promise<void> => {
+  try {
+    await fetch(`${API_URL}/chat-history`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Error clearing chat history:', error);
+  }
+};
+
+// New function to send a message and get bot response
+export const sendMessageToBot = async (message: string): Promise<ChatMessage[]> => {
+  try {
+    const response = await fetch(`${API_URL}/chat-history`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        sender: 'You'
+      }),
+    });
+    
+    const data = await response.json();
+    // Convert ISO string timestamps to Date objects
+    return Array.isArray(data) 
+      ? data.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }))
+      : [{
+          ...data,
+          timestamp: new Date(data.timestamp)
+        }];
+  } catch (error) {
+    console.error('Error sending message to bot:', error);
+    throw new Error('Failed to send message');
+  }
 };

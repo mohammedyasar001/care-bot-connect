@@ -5,15 +5,13 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatBubble } from "./ChatBubble";
 import { useHealthCare } from "@/context/HealthCareContext";
-import { Mic, Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 
 export function ChatInterface() {
   const { 
     chatMessages, 
-    sendMessage, 
-    isListening,
-    startListening,
-    stopListening
+    sendMessage,
+    isLoading
   } = useHealthCare();
   
   const [input, setInput] = useState("");
@@ -29,7 +27,7 @@ export function ChatInterface() {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
+    if (input.trim() && !isLoading) {
       sendMessage(input);
       setInput("");
     }
@@ -56,26 +54,22 @@ export function ChatInterface() {
       {/* Chat Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 bg-white rounded-b-md">
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            size="icon"
-            variant={isListening ? "destructive" : "secondary"}
-            onClick={isListening ? stopListening : startListening}
-            className="flex-shrink-0"
-          >
-            <Mic size={18} className={isListening ? "animate-pulse" : ""} />
-          </Button>
-          
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your health question..."
             className="flex-1"
+            disabled={isLoading}
           />
           
-          <Button type="submit" size="icon" className="flex-shrink-0 bg-healthcare-primary hover:bg-healthcare-secondary">
-            <Send size={18} />
+          <Button 
+            type="submit" 
+            size="icon" 
+            className="flex-shrink-0 bg-healthcare-primary hover:bg-healthcare-secondary"
+            disabled={isLoading}
+          >
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
           </Button>
         </div>
       </form>
