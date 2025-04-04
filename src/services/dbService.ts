@@ -1,6 +1,7 @@
 import { User, Appointment, Feedback, ChatMessage } from '@/types';
 
-const API_URL = 'http://localhost:5000/api';
+// Update API_URL to be relative or environment-aware
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // User methods
 export const getUser = async (): Promise<User | null> => {
