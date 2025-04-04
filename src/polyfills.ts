@@ -59,8 +59,19 @@ if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) 
     removeEventListener() {}
     dispatchEvent() { return true; }
     
-    start() { this.onstart(new Event('start')); setTimeout(() => this.onend(new Event('end')), 1000); }
-    stop() { this.onend(new Event('end')); }
-    abort() { this.onend(new Event('end')); }
+    start() { 
+      if (this.onstart) this.onstart(new Event('start')); 
+      setTimeout(() => { 
+        if (this.onend) this.onend(new Event('end')); 
+      }, 1000); 
+    }
+    
+    stop() { 
+      if (this.onend) this.onend(new Event('end')); 
+    }
+    
+    abort() { 
+      if (this.onend) this.onend(new Event('end')); 
+    }
   } as any;
 }
