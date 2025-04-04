@@ -1,13 +1,14 @@
 
+
 // Define the SpeechRecognition interface
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
-  onstart: (event: Event) => void;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: (event: Event) => void;
-  onend: (event: Event) => void;
+  onstart: ((event: Event) => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: ((event: Event) => void) | null;
   start(): void;
   stop(): void;
   abort(): void;
@@ -50,28 +51,37 @@ if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) 
     continuous = false;
     interimResults = false;
     lang = 'en-US';
-    onstart = () => {};
-    onresult = () => {};
-    onerror = () => {};
-    onend = () => {};
+    onstart: ((event: Event) => void) | null = null;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null = null;
+    onerror: ((event: Event) => void) | null = null;
+    onend: ((event: Event) => void) | null = null;
     
     addEventListener() {}
     removeEventListener() {}
     dispatchEvent() { return true; }
     
     start() { 
-      if (this.onstart) this.onstart(new Event('start')); 
+      if (this.onstart) {
+        this.onstart(new Event('start')); 
+      }
       setTimeout(() => { 
-        if (this.onend) this.onend(new Event('end')); 
+        if (this.onend) {
+          this.onend(new Event('end')); 
+        }
       }, 1000); 
     }
     
     stop() { 
-      if (this.onend) this.onend(new Event('end')); 
+      if (this.onend) {
+        this.onend(new Event('end')); 
+      }
     }
     
     abort() { 
-      if (this.onend) this.onend(new Event('end')); 
+      if (this.onend) {
+        this.onend(new Event('end')); 
+      }
     }
   } as any;
 }
+
